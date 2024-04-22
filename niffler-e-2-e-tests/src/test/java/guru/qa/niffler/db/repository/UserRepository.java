@@ -10,9 +10,13 @@ public interface UserRepository {
 
   UserAuthEntity createInAuth(UserAuthEntity user);
 
+  UserAuthEntity updateInAuth(UserAuthEntity user);
+
   Optional<UserAuthEntity> findByIdInAuth(UUID id);
 
   UserEntity createInUserdata(UserEntity user);
+
+  UserEntity updateInUserdata(UserEntity user);
 
   Optional<UserEntity> findByIdInUserdata(UUID id);
 

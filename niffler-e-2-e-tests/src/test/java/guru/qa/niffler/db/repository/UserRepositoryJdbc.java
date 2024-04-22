@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -70,6 +71,58 @@ public class UserRepositoryJdbc implements UserRepository {
         authorityPs.executeBatch();
         conn.commit();
         user.setId(authUserId);
+      } catch (Exception e) {
+        conn.rollback();
+        throw e;
+      } finally {
+        conn.setAutoCommit(true);
+      }
+
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+    return user;
+  }
+
+  @Override
+  public UserAuthEntity updateInAuth(UserAuthEntity user) {
+    try (Connection conn = authDs.getConnection()) {
+      conn.setAutoCommit(false);
+
+      try (PreparedStatement userPs = conn.prepareStatement(
+              "UPDATE \"user\" " +
+                      "SET password = ?, enabled=?, account_non_expired=?, account_non_locked=?, credentials_non_expired=? " +
+                      "WHERE username = ?");
+           PreparedStatement authorityPsDelete = conn.prepareStatement(
+                   "DELETE FROM \"authority\" WHERE user_id = ?");
+           PreparedStatement authorityPs = conn.prepareStatement(
+                   "INSERT INTO \"authority\" " +
+                           "(user_id, authority) " +
+                           "VALUES (?, ?)")
+      ) {
+
+        userPs.setString(1, pe.encode(user.getPassword()));
+        userPs.setBoolean(2, user.getEnabled());
+        userPs.setBoolean(3, user.getAccountNonExpired());
+        userPs.setBoolean(4, user.getAccountNonLocked());
+        userPs.setBoolean(5, user.getCredentialsNonExpired());
+        userPs.setString(6, user.getUsername());
+
+        userPs.executeUpdate();
+
+        authorityPsDelete.setObject(1, user.getId());
+        authorityPsDelete.executeUpdate();
+
+        for (AuthorityEntity ae: user.getAuthorities()) {
+          authorityPs.setObject(1, user.getId());
+          authorityPs.setString(2, ae.getAuthority().name());
+          authorityPs.addBatch();
+          authorityPs.clearParameters();
+        }
+
+        authorityPs.executeBatch();
+
+        conn.commit();
       } catch (Exception e) {
         conn.rollback();
         throw e;
@@ -145,6 +198,29 @@ public class UserRepositoryJdbc implements UserRepository {
       throw new RuntimeException(e);
     }
     return user;
+  }
+
+  @Override
+  public UserEntity updateInUserdata(UserEntity userForUpdate) {
+
+    try (Connection conn = udDs.getConnection();
+    PreparedStatement ps = conn.prepareStatement(
+              "UPDATE \"user\" " +
+                      "SET currency=?, firstname=?, surname=?, photo=? " +
+                      "WHERE id = ?")) {
+        ps.setString(1, userForUpdate.getCurrency().name());
+        ps.setObject(2, userForUpdate.getFirstname());
+        ps.setObject(3, userForUpdate.getSurname());
+        ps.setObject(4, userForUpdate.getPhoto());
+        ps.setObject(5, userForUpdate.getId());
+
+        ps.executeUpdate();
+
+      } catch (SQLException e) {
+        throw new RuntimeException(e);
+      }
+      return userForUpdate;
+
   }
 
   @Override

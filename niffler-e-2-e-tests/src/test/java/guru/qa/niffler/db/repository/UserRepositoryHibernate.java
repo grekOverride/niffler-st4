@@ -36,6 +36,11 @@ public class UserRepositoryHibernate extends JpaService implements UserRepositor
   }
 
   @Override
+  public UserAuthEntity updateInAuth(UserAuthEntity user) {
+    return null; // метод добавлен для компиляции
+  }
+
+  @Override
   public Optional<UserAuthEntity> findByIdInAuth(UUID id) {
     return Optional.of(entityManager(AUTH).find(UserAuthEntity.class, id));
   }
@@ -44,6 +49,11 @@ public class UserRepositoryHibernate extends JpaService implements UserRepositor
   public UserEntity createInUserdata(UserEntity user) {
     persist(USERDATA, user);
     return user;
+  }
+
+  @Override
+  public UserEntity updateInUserdata(UserEntity user) {
+    return null; // метод добавлен для компиляции
   }
 
   @Override

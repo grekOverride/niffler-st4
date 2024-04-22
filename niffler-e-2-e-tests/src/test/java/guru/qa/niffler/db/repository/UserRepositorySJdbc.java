@@ -85,6 +85,46 @@ public class UserRepositorySJdbc implements UserRepository {
     });
   }
 
+ @Override
+  public UserAuthEntity updateInAuth(UserAuthEntity user) {
+    return authTxt.execute(status -> {
+      authTemplate.update(con -> {
+        PreparedStatement ps = con.prepareStatement(
+                "UPDATE \"user\" " +
+                        "SET password=?, enabled=?, account_non_expired=?, account_non_locked=?, credentials_non_expired=? " +
+                        "WHERE username = ?");
+
+        ps.setString(1, pe.encode(user.getPassword()));
+        ps.setBoolean(2, user.getEnabled());
+        ps.setBoolean(3, user.getAccountNonExpired());
+        ps.setBoolean(4, user.getAccountNonLocked());
+        ps.setBoolean(5, user.getCredentialsNonExpired());
+        ps.setString(6, user.getUsername());
+
+          return ps;
+      });
+
+      authTemplate.update("DELETE FROM \"authority\" WHERE user_id = ?", user.getId());
+
+      authTemplate.batchUpdate("INSERT INTO \"authority\" " +
+              "(user_id, authority) " +
+              "VALUES (?, ?)", new BatchPreparedStatementSetter() {
+        @Override
+        public void setValues(PreparedStatement ps, int i) throws SQLException {
+          ps.setObject(1, user.getId());
+          ps.setString(2, user.getAuthorities().get(i).getAuthority().name());
+        }
+
+        @Override
+        public int getBatchSize() {
+          return user.getAuthorities().size();
+        }
+      });
+
+      return user;
+    });
+  }
+
   @Override
   public Optional<UserAuthEntity> findByIdInAuth(UUID id) {
     try {
@@ -117,6 +157,24 @@ public class UserRepositorySJdbc implements UserRepository {
     }, kh);
 
     user.setId((UUID) kh.getKeys().get("id"));
+    return user;
+  }
+
+  @Override
+  public UserEntity updateInUserdata(UserEntity user) {
+    KeyHolder kh = new GeneratedKeyHolder();
+    udTemplate.update(con -> {
+      PreparedStatement ps = con.prepareStatement(
+              "UPDATE \"user\" " +
+                      "SET currency=?, firstname=?, surname=?, photo=? " +
+                      "WHERE id = ?");
+        ps.setString(1, user.getCurrency().name());
+        ps.setObject(2, user.getFirstname());
+        ps.setObject(3, user.getSurname());
+        ps.setObject(4, user.getPhoto());
+        ps.setObject(5, user.getId());
+      return ps;
+    }, kh);
     return user;
   }
 
